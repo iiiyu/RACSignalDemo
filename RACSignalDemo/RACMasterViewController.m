@@ -1,16 +1,15 @@
 //
-//  MasterViewController.m
+//  RACMasterViewController.m
 //  RACSignalDemo
 //
-//  Created by Xiao ChenYu on 12/26/14.
+//  Created by Xiao ChenYu on 12/27/14.
 //  Copyright (c) 2014 sumi-sumi. All rights reserved.
 //
 
-#import "MasterViewController.h"
+#import "RACMasterViewController.h"
+#import "UISearchController+RAC.h"
 
-
-@interface MasterViewController ()
-<UISearchControllerDelegate, UISearchResultsUpdating>
+@interface RACMasterViewController()
 
 @property NSMutableArray *objects;
 
@@ -21,7 +20,7 @@
 
 @end
 
-@implementation MasterViewController
+@implementation RACMasterViewController
 
 - (void)awakeFromNib {
     [super awakeFromNib];
@@ -38,13 +37,14 @@
                          ];
     self.searchResults = @[];
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
-    self.searchController.searchResultsUpdater = self;
-    self.searchController.delegate = self;
     [self.searchController.searchBar sizeToFit];
     self.tableView.tableHeaderView = self.searchController.searchBar;
 
-
-
+    RAC(self, searchResults) = [self rac_liftSelector:@selector(search:) withSignalsFromArray:@[self.searchController.rac_textSignal]];
+    [self.searchController.rac_textSignal subscribeNext:^(id x) {
+        [self.tableView reloadData];
+    }];
+    RAC(self, searching) = [self.searchController rac_isActiveSignal];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -52,63 +52,19 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)insertNewObject:(id)sender {
-    if (!self.objects) {
-        self.objects = [[NSMutableArray alloc] init];
-    }
-    [self.objects insertObject:[NSDate date] atIndex:0];
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-}
-
-
-#pragma mark - UISearchResultsUpdating
-
-- (void)updateSearchResultsForSearchController:(UISearchController *)searchController
-{
-    if (searchController.searchBar.text.length > 0) {
-        self.searchResults = [self search:searchController.searchBar.text];
-    } else {
-        self.searchResults = self.searchTexts;
-    }
-
-    [self.tableView reloadData];
-}
-
-
 - (NSArray *)search:(NSString *)searchText {
     NSMutableArray *results = [NSMutableArray array];
-    for (NSString *text in self.searchTexts) {
-        if([[text lowercaseString] rangeOfString:[searchText lowercaseString]].location != NSNotFound) {
-            [results addObject:text];
+    if (searchText.length > 0) {
+        for (NSString *text in self.searchTexts) {
+            if([[text lowercaseString] rangeOfString:[searchText lowercaseString]].location != NSNotFound) {
+                [results addObject:text];
+            }
         }
+    } else {
+        results = [self.searchTexts copy];
     }
     return results;
 }
-
-#pragma mark - UISearchControllerDelegate
-
-- (void)willPresentSearchController:(UISearchController *)searchController
-{
-    self.searching = YES;
-}
-
-- (void)didPresentSearchController:(UISearchController *)searchController
-{
-
-}
-
-- (void)willDismissSearchController:(UISearchController *)searchController
-{
-    self.searching = NO;
-    [self.tableView reloadData];
-}
-
-- (void)didDismissSearchController:(UISearchController *)searchController
-{
-
-}
-
 
 #pragma mark - Table view data source
 
@@ -133,6 +89,5 @@
     cell.textLabel.text = self.isSearching ? self.searchResults[indexPath.row] : self.searchTexts[indexPath.row];
     return cell;
 }
-
 
 @end
