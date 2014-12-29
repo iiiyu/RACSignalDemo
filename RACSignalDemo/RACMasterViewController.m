@@ -41,7 +41,9 @@
     self.tableView.tableHeaderView = self.searchController.searchBar;
 
     RAC(self, searchResults) = [self rac_liftSelector:@selector(search:) withSignalsFromArray:@[self.searchController.rac_textSignal]];
+    @weakify(self);
     [self.searchController.rac_textSignal subscribeNext:^(id x) {
+        @strongify(self);
         [self.tableView reloadData];
     }];
     RAC(self, searching) = [self.searchController rac_isActiveSignal];
